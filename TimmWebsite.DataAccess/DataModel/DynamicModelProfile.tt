@@ -1,0 +1,182 @@
+﻿<#@ template debug="true" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Data" #>
+<#@ assembly name="System.Globalization" #>
+<#@ import namespace="System.Data" #>
+<#@ import namespace="System.Data.SqlClient" #>
+<#@ import namespace="System.Globalization" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+
+<#
+                string connectionString = "";
+                string sql = $@"
+                    WITH TABLE_COLUMN_COUNT AS (
+                        SELECT TABLE_NAME, MAX(ORDINAL_POSITION) AS MAX_COLUMN_NUM
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        GROUP BY TABLE_NAME
+                    ),
+	                CONSTRAINT_DEAULT_VALUE AS (
+                        SELECT default_constraints.name AS CONSTRAINT_NAME, 
+                                tables.name AS TABLE_NAME, 
+                                all_columns.name AS COLUMN_NAME, 
+                                ISNULL(default_constraints.definition, 'NULL') AS DEFAULT_VALUE
+                        FROM sys.all_columns
+                        INNER JOIN sys.tables ON all_columns.object_id = tables.object_id
+                        INNER JOIN sys.schemas ON tables.schema_id = schemas.schema_id
+                        INNER JOIN sys.default_constraints ON all_columns.default_object_id = default_constraints.object_id
+                        WHERE schemas.name = 'dbo'
+                    )
+                    SELECT a.TABLE_NAME, a.COLUMN_NAME, a.ORDINAL_POSITION, a.IS_NULLABLE, a.DATA_TYPE, b.MAX_COLUMN_NUM, 
+                            ISNULL(REPLACE(REPLACE(c.DEFAULT_VALUE, '(', ''), ')', ''), 'NULL') AS DEFAULT_VALUE
+                    FROM INFORMATION_SCHEMA.COLUMNS a
+                    INNER JOIN TABLE_COLUMN_COUNT b on a.TABLE_NAME = b.TABLE_NAME
+                    LEFT JOIN CONSTRAINT_DEAULT_VALUE c on a.TABLE_NAME = c.TABLE_NAME AND a.COLUMN_NAME = c.COLUMN_NAME
+                    WHERE a.TABLE_NAME in (
+                        'Profile_Portfolio'
+                        )
+                    ORDER BY TABLE_NAME, ORDINAL_POSITION
+                ";
+
+                var dataTable = new DataTable();
+                using (var connection = new SqlConnection(connectionString))
+                using (var command = new SqlCommand(sql, connection))
+                using (var adapter = new SqlDataAdapter(command))
+                {
+                    connection.Open();
+                    adapter.Fill(dataTable);
+                }
+#>
+
+using System;
+
+namespace TimmWebsite.DataAccess.DataModel
+{
+<#
+                foreach(DataRow row in dataTable.Rows)
+                {
+                    string tableName = row["TABLE_NAME"].ToString();
+                    string columnName = row["COLUMN_NAME"].ToString();
+                    string columnNumber = row["ORDINAL_POSITION"].ToString();
+                    string columnNumberMax = row["MAX_COLUMN_NUM"].ToString();
+                    string dataType = GetNetDataType(row["DATA_TYPE"].ToString());
+                    string defaultValue = GetConstraintDefaultValue(dataType, row["DEFAULT_VALUE"].ToString());
+                    string isNullable = (row["IS_NULLABLE"].ToString() == "YES" && dataType != "string" && dataType != "byte[]") ? "Nullable<{0}>" : "{0}";
+
+                    if (columnNumber == "1")
+                    {
+#>
+    public class <#= tableName #>
+    {
+<#  
+                    } 
+#>
+        public <#=string.Format(isNullable, dataType)#> <#=columnName#> { get; set; } <#= (defaultValue != null) ? $"= {defaultValue}; " : "" #>
+<# 
+                    if (columnNumber == columnNumberMax)
+                    {
+#>
+    }
+
+<#
+                    }
+                } 
+#>
+}
+
+<#+
+                public static string GetNetDataType(string sqlDataTypeName)
+                {
+                    switch (sqlDataTypeName.ToLower())
+                    {
+                        case "bigint":
+                            return "Int64";
+                        case "binary":
+                        case "image":
+                        case "varbinary":
+                            return "byte[]";
+                        case "bit":
+                            return "bool";
+                        case "char":
+                            return "char";
+                        case "datetime":
+                        case "smalldatetime":
+                            return "DateTime";
+                        case "decimal":
+                        case "money":
+                        case "numeric":
+                            return "decimal";
+                        case "float":
+                            return "double";
+                        case "int":
+                            return "int";
+                        case "nchar":
+                        case "nvarchar":
+                        case "text":
+                        case "varchar":
+                        case "xml":
+                            return "string";
+                        case "real":
+                            return "single";
+                        case "smallint":
+                            return "Int16";
+                        case "tinyint":
+                            return "byte";
+                        case "uniqueidentifier":
+                            return "Guid";
+
+                        default:
+                            return null;
+                    }
+                }
+#>
+
+<#+
+                public static string GetConstraintDefaultValue(string columnDataType, string sqlDefaultValue)
+                {
+                    sqlDefaultValue = sqlDefaultValue.TrimStart('(').TrimEnd(')').Replace("'", "");
+
+                    if (sqlDefaultValue == "NULL")
+                    {
+                        return null;
+                    }
+                    else
+                    {
+                        switch (columnDataType)
+                        {
+                            case "bool":
+                                switch (sqlDefaultValue)
+                                {
+                                    case "0":
+                                        return "false";
+                                    case "1":
+                                        return "true";
+                                    default:
+                                        return null;
+                                }
+
+                            case "DateTime":
+                                switch (sqlDefaultValue)
+                                {
+                                    case "getdate":
+                                        return "DateTime.Now";
+                                    default:
+                                        return $@"DateTime.Parse(""{DateTime.Parse(sqlDefaultValue).ToString(new CultureInfo("en-US"))}"")";
+                                }
+
+                            case "string":
+                                return $@"""{sqlDefaultValue}""";
+
+                            case "int":
+                            case "Int16":
+                            case "Int64":
+                                return sqlDefaultValue;
+
+                            default:
+                                return null;
+                        }
+                    }
+                }
+#>

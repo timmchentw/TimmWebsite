@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace TimmWebsite.Models
 {
-    public class ResumeViewModel
+    public class ProfileViewModel
     {
         public List<PortfolioItem> PortfolioItems { get; set; }
         public List<SkillItem> SkillItems { get; set; }

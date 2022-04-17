@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TimmWebsite.Services
+namespace TimmWebsite.Services.Profile
 {
-    public class ResumeTimeLineDto
+    public class ProfileTimeLineDto
     {
         public int Year { get; set; }
         public string Month { get; set; }

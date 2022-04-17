@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using TimmWebsite.Shared.Enums;
 
-namespace TimmWebsite.Services
+namespace TimmWebsite.Services.Profile
 {
-    public class ResumePortfolioDto
+    public class ProfilePortfolioDto
     {
         public string Title { get; set; }
         public string Text { get; set; }

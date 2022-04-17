@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using TimmWebsite.Shared.Enums;
 
-namespace TimmWebsite.Services
+namespace TimmWebsite.Services.Profile
 {
-    public class ResumeSkillDto
+    public class ProfileSkillDto
     {
         public SkillType Type { get; set; }
         public List<string> Skills { get; set; }

@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TimmWebsite.Services;
+using TimmWebsite.Services.Profile;
 
 namespace TimmWebsite
 {
@@ -27,7 +28,9 @@ namespace TimmWebsite
         {
             services.AddControllersWithViews();
 
-            services.AddScoped<IResumeService, ResumeService>();
+            services.AddSingleton(Configuration);
+            services.AddScoped<IDalSession, DalSession>();
+            services.AddScoped<IProfileService, ProfileService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
